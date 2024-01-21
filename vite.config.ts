@@ -10,6 +10,7 @@ export default defineConfig({
   base: '/random-geodata/',
   build: {
     rollupOptions: {
+      // TODO: ensure if this is really needed
       external: ['geojson']
     }
   },
