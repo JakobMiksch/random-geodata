@@ -8,12 +8,6 @@ export default defineConfig({
     vue(),
   ],
   base: '/random-geodata/',
-  build: {
-    rollupOptions: {
-      // TODO: ensure if this is really needed
-      external: ['geojson']
-    }
-  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
