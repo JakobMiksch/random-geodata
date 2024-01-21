@@ -61,6 +61,7 @@ onMounted(() => {
 
     drawSource.on('addfeature', (event) => {
         chosenExtent.value = event?.feature?.getGeometry()?.getExtent() ?? []
+        showPoints()
     })
 
     const draw = new Draw({
@@ -93,7 +94,7 @@ onMounted(() => {
     map.value.addLayer(pointLayer)
 
     map.value.getView().setCenter([11, 47])
-    map.value.getView().setZoom(15)
+    map.value.getView().setZoom(4)
 })
 </script>
 
