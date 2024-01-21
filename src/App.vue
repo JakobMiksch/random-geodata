@@ -1,7 +1,6 @@
 <template>
     <OlMap :style="{ width: '500px', height: '500px' }" />
-    <div>Extent: {{ displayExtent }}</div>
-    <button @click="downloadGeoJson">Download</button>
+    <button v-if="!extentEmpty" @click="downloadGeoJson">Download</button>
 </template>
 
 <script setup lang="ts">
@@ -23,6 +22,7 @@ useGeographic()
 
 const chosenExtent: Ref<Extent> = ref([])
 const displayExtent: Ref<Extent> = computed(() => chosenExtent.value.map((x) => parseFloat(x.toFixed(2))))
+const extentEmpty = computed(() => chosenExtent.value.length === 0)
 
 const pointFeatureCollection = ref<FeatureCollection<Point, GeoJsonProperties>>()
 const pointSource = ref(new VectorSource({}))
