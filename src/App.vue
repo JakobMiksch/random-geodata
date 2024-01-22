@@ -15,7 +15,7 @@ import VectorSource from 'ol/source/Vector'
 import VectorLayer from 'ol/layer/Vector'
 import type { Extent } from 'ol/extent'
 import { Feature as OlFeature } from 'ol'
-import { type Feature, type FeatureCollection, type GeoJsonProperties, type Point } from 'geojson'
+import type { Feature, FeatureCollection, GeoJsonProperties, Point } from 'geojson'
 useGeographic()
 
 const chosenExtent: Ref<Extent> = ref([])
