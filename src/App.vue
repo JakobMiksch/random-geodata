@@ -48,7 +48,9 @@ const createRandomPoints = (
     const newFeature: Feature<Point> = {
       type: 'Feature',
       geometry: { type: 'Point', coordinates: coord4326 },
-      properties: {}
+      properties: {
+        id: i + 1 // ensure ID starts with 1
+      }
     }
     result.features.push(newFeature)
   }
