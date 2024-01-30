@@ -1,6 +1,11 @@
 <template>
-  <OlMap :style="{ width: '500px', height: '500px' }" />
-  <button v-if="!extentEmpty" @click="downloadGeoJson">Download</button>
+  <header>
+    <h1 :style="{marginTop: 0, marginBottom: 0}">Random Geodata</h1>
+  </header>
+  <main :style="{paddingTop: 0}">
+    <OlMap :style="{ width: '100%', height: '500px' }" />
+    <button v-if="!extentEmpty" @click="downloadGeoJson">Download</button>
+  </main>
 </template>
 
 <script setup lang="ts">
