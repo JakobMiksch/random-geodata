@@ -1,7 +1,5 @@
 # random-geodata
 
-**! WORK IN PROGRESS !**
-
 Webapp to generate random geodata for download.
 
 [**Demo**](https://jakobmiksch.github.io/random-geodata/)
