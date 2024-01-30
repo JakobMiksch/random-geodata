@@ -1,10 +1,11 @@
 <template>
   <header>
-    <h1 :style="{marginTop: 0, marginBottom: 0}">Random Geodata</h1>
+    <h1 :style="{ marginTop: 0, marginBottom: 0 }">Random Geodata</h1>
   </header>
-  <main :style="{paddingTop: 0}">
+  <main :style="{ paddingTop: 0 }">
     <OlMap :style="{ width: '100%', height: '500px' }" />
-    <button v-if="!extentEmpty" @click="downloadGeoJson">Download</button>
+    <button v-if="!extentEmpty" @click="downloadGeoJson()">GeoJSON</button>
+    <button v-if="!extentEmpty" @click="downloadShapefile()">Shapefile</button>
   </main>
 </template>
 
@@ -21,6 +22,9 @@ import VectorLayer from 'ol/layer/Vector'
 import type { Extent } from 'ol/extent'
 import { Feature as OlFeature } from 'ol'
 import type { Feature, FeatureCollection, GeoJsonProperties, Point } from 'geojson'
+
+import shpwrite from '@mapbox/shp-write'
+
 useGeographic()
 
 const chosenExtent: Ref<Extent> = ref([])
@@ -68,22 +72,44 @@ const showPoints = () => {
   pointSource.value.addFeatures(olFeatures)
 }
 
-const downloadGeoJson = () => {
-  const jsonData = JSON.stringify(pointFeatureCollection.value, null, 2)
-  const blob = new Blob([jsonData], { type: 'application/json' })
+const downloadBlob = (blob: Blob, name: string) => {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = 'random-geodata-' + displayExtent.value.join('-') + '.geojson'
+  a.download = name
   document.body.appendChild(a)
   a.click()
   URL.revokeObjectURL(url)
   document.body.removeChild(a)
 }
 
+const fileName = computed(() => 'random-geodata-' + displayExtent.value.join('-'))
+
+const downloadGeoJson = () => {
+  const jsonData = JSON.stringify(pointFeatureCollection.value, null, 2)
+  const blob = new Blob([jsonData], { type: 'application/json' })
+  const name = fileName.value + '.geojson'
+  downloadBlob(blob, name)
+}
+
+const downloadShapefile = async () => {
+  const options: shpwrite.DownloadOptions & shpwrite.ZipOptions = {
+    outputType: 'blob',
+    compression: 'DEFLATE',
+    types: {
+      point: fileName.value
+    }
+  }
+  if (!pointFeatureCollection.value) return
+  const shpArrayBuffer = await shpwrite.zip(pointFeatureCollection.value, options)
+  const blob = new Blob([shpArrayBuffer], { type: 'application/octet-stream' })
+
+  downloadBlob(blob, fileName.value + '.shp.zip')
+}
+
 const { map } = useOl()
 
-onMounted(() => {
+onMounted(async () => {
   const drawSource = new VectorSource({ wrapX: false })
 
   drawSource.on('clear', () => {
@@ -128,5 +154,3 @@ onMounted(() => {
   map.value.getView().setZoom(4)
 })
 </script>
-
-<style scoped></style>
