@@ -1,11 +1,11 @@
 <template>
   <header>
     <h1 :style="{ marginTop: 0, marginBottom: 0 }">Random Geodata</h1>
+    <p>Draw a rectangle on the map to generate random points</p>
   </header>
   <main :style="{ paddingTop: 0 }">
     <OlMap :style="{ width: '100%', height: '500px' }" />
-    <button v-if="!extentEmpty" @click="downloadGeoJson()">GeoJSON</button>
-    <button v-if="!extentEmpty" @click="downloadShapefile()">Shapefile</button>
+    <button :disabled="extentEmpty" :style="{marginRight: '5px'}" v-for="driver in drivers" :key="driver.name"  @click="downloadGdal(driver)">{{ driver.name }}</button>
   </main>
 </template>
 
@@ -23,7 +23,16 @@ import type { Extent } from 'ol/extent'
 import { Feature as OlFeature } from 'ol'
 import type { Feature, FeatureCollection, GeoJsonProperties, Point } from 'geojson'
 
-import shpwrite from '@mapbox/shp-write'
+import workerUrl from 'gdal3.js/dist/package/gdal3.js?url'
+import dataUrl from 'gdal3.js/dist/package/gdal3WebAssembly.data?url'
+import wasmUrl from 'gdal3.js/dist/package/gdal3WebAssembly.wasm?url'
+import initGdalJs from 'gdal3.js'
+
+const paths = {
+  wasm: wasmUrl,
+  data: dataUrl,
+  js: workerUrl
+}
 
 useGeographic()
 
@@ -31,10 +40,58 @@ const chosenExtent: Ref<Extent> = ref([])
 const displayExtent: Ref<Extent> = computed(() =>
   chosenExtent.value.map((x) => parseFloat(x.toFixed(2)))
 )
+const fileName = computed(() => 'random-geodata-' + displayExtent.value.join('-'))
+
 const extentEmpty = computed(() => chosenExtent.value.length === 0)
 
 const pointFeatureCollection = ref<FeatureCollection<Point, GeoJsonProperties>>()
 const pointSource = ref(new VectorSource({}))
+
+type DriverProperties = {name: string, extraOptions?: string[]}
+
+const drivers: DriverProperties[] = [
+  {name: 'GeoJSON'},
+  {name: 'GPKG'},
+  {name: 'FlatGeobuf'},
+  {name: 'CSV', extraOptions: ['-lco', 'GEOMETRY=AS_WKT']},
+  {name: 'PGDUMP'},
+]
+// additional DRIVERS of interest:  Shape, GML,  GPX,  KML, ODS, XLSX
+
+const downloadGdal = (driverProperties: DriverProperties) => {
+  initGdalJs({ paths }).then(async (Gdal) => {
+    const blob = new Blob([JSON.stringify(pointFeatureCollection.value)], {
+      type: 'application/json'
+    })
+
+    const {name: driverName, extraOptions} = driverProperties
+
+    const mygeojsonFile = new File([blob], 'input.geojson')
+
+    const datasetList = await Gdal.open(mygeojsonFile)
+    const geojsonDs = datasetList.datasets[0]
+
+    const vectorDrivers = Gdal.drivers.vector
+
+    // @ts-ignore
+    const chosenDriver = vectorDrivers[driverName]
+
+    const outputLayerName = 'random_points'
+
+    let options = ['-f', chosenDriver.shortName, '-t_srs', 'EPSG:4326', '-nln', outputLayerName]
+    if (extraOptions) {
+      options = options.concat(extraOptions)
+    }
+
+    const output = await Gdal.ogr2ogr(geojsonDs, options)
+    // for debugging
+    // const outputFiles = await Gdal.getOutputFiles()
+    // console.log(outputFiles)
+    const bytes = await Gdal.getFileBytes(output)
+    const outBlob = new Blob([bytes])
+    downloadBlob(outBlob, fileName.value + '.' + chosenDriver.extension)
+  })
+}
 
 const createRandomPoints = (
   extent: Extent,
@@ -81,30 +138,6 @@ const downloadBlob = (blob: Blob, name: string) => {
   a.click()
   URL.revokeObjectURL(url)
   document.body.removeChild(a)
-}
-
-const fileName = computed(() => 'random-geodata-' + displayExtent.value.join('-'))
-
-const downloadGeoJson = () => {
-  const jsonData = JSON.stringify(pointFeatureCollection.value, null, 2)
-  const blob = new Blob([jsonData], { type: 'application/json' })
-  const name = fileName.value + '.geojson'
-  downloadBlob(blob, name)
-}
-
-const downloadShapefile = async () => {
-  const options: shpwrite.DownloadOptions & shpwrite.ZipOptions = {
-    outputType: 'blob',
-    compression: 'DEFLATE',
-    types: {
-      point: fileName.value
-    }
-  }
-  if (!pointFeatureCollection.value) return
-  const shpArrayBuffer = await shpwrite.zip(pointFeatureCollection.value, options)
-  const blob = new Blob([shpArrayBuffer], { type: 'application/octet-stream' })
-
-  downloadBlob(blob, fileName.value + '.shp.zip')
 }
 
 const { map } = useOl()
