@@ -5,7 +5,23 @@
   </header>
   <main :style="{ paddingTop: 0 }">
     <OlMap :style="{ width: '100%', height: '500px' }" />
-    <button :disabled="extentEmpty" :style="{marginRight: '5px'}" v-for="driver in drivers" :key="driver.name"  @click="downloadGdal(driver)">{{ driver.name }}</button>
+
+    <label for="projectionsSelect">Projection:</label>
+    <select id="projectionsSelect" v-model="selectedProjection">
+      <option v-for="option in projectionOptions" :value="option.name" :key="option.name">
+        {{ option.name }}
+      </option>
+    </select>
+
+    <button
+      :disabled="extentEmpty"
+      :style="{ marginRight: '5px' }"
+      v-for="driver in drivers"
+      :key="driver.name"
+      @click="downloadGdal(driver)"
+    >
+      {{ driver.name }}
+    </button>
   </main>
 </template>
 
@@ -19,9 +35,10 @@ import OSM from 'ol/source/OSM'
 import Draw, { createBox } from 'ol/interaction/Draw'
 import VectorSource from 'ol/source/Vector'
 import VectorLayer from 'ol/layer/Vector'
-import type { Extent } from 'ol/extent'
+import { getCenter, type Extent } from 'ol/extent'
 import { Feature as OlFeature } from 'ol'
 import type { Feature, FeatureCollection, GeoJsonProperties, Point } from 'geojson'
+import { getUtmEpsgFromCoordinate } from '@/util/projectionUtil'
 
 import workerUrl from 'gdal3.js/dist/package/gdal3.js?url'
 import dataUrl from 'gdal3.js/dist/package/gdal3WebAssembly.data?url'
@@ -37,6 +54,8 @@ const paths = {
 useGeographic()
 
 const chosenExtent: Ref<Extent> = ref([])
+const chosenExtentCenter = computed(() => getCenter(chosenExtent.value))
+
 const displayExtent: Ref<Extent> = computed(() =>
   chosenExtent.value.map((x) => parseFloat(x.toFixed(2)))
 )
@@ -47,24 +66,38 @@ const extentEmpty = computed(() => chosenExtent.value.length === 0)
 const pointFeatureCollection = ref<FeatureCollection<Point, GeoJsonProperties>>()
 const pointSource = ref(new VectorSource({}))
 
-type DriverProperties = {name: string, extraOptions?: string[]}
+type DriverProperties = { name: string; extraOptions?: string[] }
 
 const drivers: DriverProperties[] = [
-  {name: 'GeoJSON'},
-  {name: 'GPKG'},
-  {name: 'FlatGeobuf'},
-  {name: 'CSV', extraOptions: ['-lco', 'GEOMETRY=AS_WKT']},
-  {name: 'PGDUMP'},
+  { name: 'GeoJSON' },
+  { name: 'GPKG' },
+  { name: 'FlatGeobuf' },
+  { name: 'CSV', extraOptions: ['-lco', 'GEOMETRY=AS_WKT'] },
+  { name: 'PGDUMP' }
 ]
 // additional DRIVERS of interest:  Shape, GML,  GPX,  KML, ODS, XLSX
 
+type ProjectionOption = { name: string }
+const projectionOptions: ProjectionOption[] = [{ name: 'WGS84' }, { name: 'UTM' }]
+
+const selectedProjection = ref<string>(projectionOptions[0].name)
+const selectedEpsgCode = computed(() => {
+  if (selectedProjection.value === 'WGS84') return '4326'
+  else if (selectedProjection.value === 'UTM') return utmEpsgCode.value
+  else return undefined
+})
+
 const downloadGdal = (driverProperties: DriverProperties) => {
   initGdalJs({ paths }).then(async (Gdal) => {
+    if (!selectedEpsgCode.value) {
+      alert('Error with selected CRS')
+      return
+    }
     const blob = new Blob([JSON.stringify(pointFeatureCollection.value)], {
       type: 'application/json'
     })
 
-    const {name: driverName, extraOptions} = driverProperties
+    const { name: driverName, extraOptions } = driverProperties
 
     const mygeojsonFile = new File([blob], 'input.geojson')
 
@@ -78,7 +111,14 @@ const downloadGdal = (driverProperties: DriverProperties) => {
 
     const outputLayerName = 'random_points'
 
-    let options = ['-f', chosenDriver.shortName, '-t_srs', 'EPSG:4326', '-nln', outputLayerName]
+    let options = [
+      '-f',
+      chosenDriver.shortName,
+      '-t_srs',
+      'EPSG:' + selectedEpsgCode.value,
+      '-nln',
+      outputLayerName
+    ]
     if (extraOptions) {
       options = options.concat(extraOptions)
     }
@@ -141,6 +181,14 @@ const downloadBlob = (blob: Blob, name: string) => {
 }
 
 const { map } = useOl()
+
+const utmEpsgCode = computed(() => {
+  if (chosenExtentCenter.value) {
+    return getUtmEpsgFromCoordinate([...chosenExtentCenter.value])
+  } else {
+    return undefined
+  }
+})
 
 onMounted(async () => {
   const drawSource = new VectorSource({ wrapX: false })
