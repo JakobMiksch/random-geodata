@@ -1,28 +1,76 @@
 <template>
-  <header>
-    <h1 :style="{ marginTop: 0, marginBottom: 0 }">Random Geodata</h1>
-    <p>Draw a rectangle on the map to generate random points</p>
-  </header>
-  <main :style="{ paddingTop: 0 }">
-    <OlMap :style="{ width: '100%', height: '500px' }" />
+  <div
+    :style="{
+      position: 'absolute',
+      pointerEvents: 'none',
+      zIndex: 2,
+      width: '100vw',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center'
+    }"
+  >
+    <div
+      :style="{
+        backgroundColor: 'rgba(255, 255, 255, 0.7)',
+        borderRadius: '10px',
+        padding: '20px',
+        display: 'inline-block'
+      }"
+    >
+      <h1 :style="{ marginTop: 0, marginBottom: 0 }">Random Geodata</h1>
+      <p>Draw a rectangle on the map to generate random points</p>
+    </div>
+  </div>
+  <OlMap :style="{ width: '100vw', height: '100vh' }" />
 
-    <label for="projectionsSelect">Projection:</label>
-    <select id="projectionsSelect" v-model="selectedProjection">
-      <option v-for="option in projectionOptions" :value="option.name" :key="option.name">
-        {{ option.name }}
-      </option>
-    </select>
+  <div
+    :style="{
+      backgroundColor: 'rgba(255, 255, 255, 0.7)',
+      borderRadius: '10px',
+      position: 'absolute',
+      pointerEvents: 'none',
+      zIndex: 2,
+      bottom: 0,
+      top: 'auto',
+      padding: '10px'
+    }"
+  >
+    <h2>Download</h2>
+
+    <div>
+      <label for="projectionsSelect" :style="{ display: 'unset', marginRight: '4px' }"
+        >Projection:</label
+      >
+      <select
+        id="projectionsSelect"
+        v-model="selectedProjection"
+        :style="{
+          pointerEvents: 'auto',
+          display: 'unset'
+        }"
+      >
+        <option v-for="option in projectionOptions" :value="option.name" :key="option.name">
+          {{ option.name }}
+        </option>
+      </select>
+    </div>
 
     <button
       :disabled="extentEmpty"
-      :style="{ marginRight: '5px' }"
+      :style="{
+        marginRight: '5px',
+        pointerEvents: 'auto',
+        fontSize: 'small',
+        padding: '8px 16px 8px 16px'
+      }"
       v-for="driver in drivers"
       :key="driver.name"
       @click="downloadGdal(driver)"
     >
       {{ driver.name }}
     </button>
-  </main>
+  </div>
 </template>
 
 <script setup lang="ts">
