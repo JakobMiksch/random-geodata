@@ -32,7 +32,7 @@
     "mvp.css": "^1.17.0",
     "npm-run-all2": "^6.2.3",
     "prettier": "^3.3.3",
-    "typescript": "~5.6.2",
+    "typescript": "~5.7.2",
     "vite": "^5.4.8",
     "vue-tsc": "^2.1.10"
   }
